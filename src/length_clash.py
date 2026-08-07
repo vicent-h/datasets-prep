@@ -1,6 +1,7 @@
 import re
+from src.processor import Processor
 
-class LengthClash:
+class LengthClash(Processor):
     def __init__(self, max_length_diff_ratio = 1.8):
         self.max_length_diff_ratio = max_length_diff_ratio
         self.lengths = {}
@@ -18,7 +19,7 @@ class LengthClash:
         length_diff_ratio = max(len1, len2) / min(len1, len2)
         return length_diff_ratio
 
-    def apply(self, text1: str, text2: str) -> bool:
+    def apply_pairs(self, text1: str, text2: str) -> tuple:
         length_diff_ratio = self.score(text1, text2)
         if length_diff_ratio > self.max_length_diff_ratio:
             return (text1, text2), True

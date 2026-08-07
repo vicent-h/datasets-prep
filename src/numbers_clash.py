@@ -1,6 +1,8 @@
 import re
+from src.processor import Processor
 
-class NumbersClash:
+
+class NumbersClash(Processor):
     def __init__(self, threshold=0.5):
         self.threshold = threshold
 

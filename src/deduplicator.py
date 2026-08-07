@@ -1,8 +1,31 @@
 import re
 import datasketch as ds
+from src.processor import Processor
+
+class ExactDuplicator(Processor):
+    """Detect exact duplicate sentences.
+
+    Methods
+    - `is_duplicate(text)`: returns True if `text` is identical to any previously seen sentence. If not duplicate, the sentence is added to the index for future comparisons.
+    """
+
+    def __init__(self):
+        self.seen_texts = set()
+
+    def apply(self, text: str) -> bool:
+        """Return True if `text` is an exact duplicate of any stored sentence.
+
+        If no exact duplicate is found the sentence is added to the index and
+        the method returns False.
+        """
+        if text in self.seen_texts:
+            return True
+        else:
+            self.seen_texts.add(text)
+            return text, False
 
 
-class MinHashDetector:
+class MinHashDetector(Processor):
     """Detect near-duplicate sentences using MinHash + MinHashLSH.
 
     Methods
@@ -45,7 +68,7 @@ class MinHashDetector:
                 continue
             sim = mh.jaccard(other_mh)
             if sim >= self.threshold:
-                return True
+                return text, False
         # not duplicate -> add to index
         key = f"item{self._counter}"
         self._counter += 1
@@ -54,4 +77,14 @@ class MinHashDetector:
         self.lsh.insert(key, mh)
         return text, False
 
-    
+    def apply_pairs(self, text1: str, text2: str) -> tuple[str, str]:
+        """
+            Return True if `text1` and `text2` are near-duplicates of any stored sentence.
+        """
+
+        result_pairs = False
+        text1, result1 = self.apply(text1)
+        text2, result2 = self.apply(text2)
+
+        result_pairs = result1 and result2
+        return (text1, text2), result_pairs

@@ -1,6 +1,7 @@
 import numpy as np
 import fasttext
 from fasttext.FastText import _FastText as FastTextClass
+from src.processor import Processor
 
 
 def _predict_compat(self, text, k=1, threshold=0.0, on_unicode_error="strict"):
@@ -28,7 +29,7 @@ def _predict_compat(self, text, k=1, threshold=0.0, on_unicode_error="strict"):
 
 FastTextClass.predict = _predict_compat
 
-class LangIdentifier:
+class LangIdentifier(Processor):
     def __init__(self, model_path: str = None, threshold: float = 0.75, k=1):
         self.threshold = threshold
         self.k = k
@@ -65,6 +66,26 @@ class LangIdentifier:
                 if prob > self.threshold and lang == expected_lang:
                     return text, True
         return text, False
+
+    def apply_pairs(self, text1: str, text2: str, expected_lang1: str = None, expected_lang2: str = None) -> tuple:
+        """
+        Predict the languages of two input texts.
+
+        Args:
+            text1 (str): The first input text to be classified.
+            text2 (str): The second input text to be classified.
+            expected_lang1 (str): The expected language for the first text.
+            expected_lang2 (str): The expected language for the second text.
+
+        Returns:
+            tuple: A tuple containing the results for both texts.
+        """
+
+        result_pairs = False
+        text1, result1 = self.apply(text1, expected_lang=expected_lang1)
+        text2, result2 = self.apply(text2, expected_lang=expected_lang2)
+        result_pairs = result1 and result2
+        return (text1, text2), result_pairs
 
     def score(self, text: str) -> float:
         """
