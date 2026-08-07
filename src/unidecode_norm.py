@@ -1,10 +1,10 @@
-import unidecode
+import unicodedata
 from src.processor import Processor
 
 
 class UnidecodeNorm(Processor):
-    def __init__(self):
-        pass
+    def __init__(self, format='NFC'):
+        self.format = format
 
     def apply(self, text: str) -> str:
         """
@@ -16,9 +16,9 @@ class UnidecodeNorm(Processor):
         Returns:
             str: The normalized text.
         """
-        return unidecode.normalize("NFCK", text), True
+        return unicodedata.normalize(self.format, text), True, {}
 
-    def apply_pairs(self, text1, text2):
+    def apply_pairs(self, text1, text2, **kwargs):
 
         """
         Normalize two input texts using unidecode.
@@ -32,4 +32,4 @@ class UnidecodeNorm(Processor):
         """
         text1, _ = self.apply(text1)
         text2, _ = self.apply(text2)
-        return (text1, text2), True
+        return (text1, text2), True, {}

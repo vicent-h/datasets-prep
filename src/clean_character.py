@@ -9,10 +9,10 @@ class CleanCharacter(Processor):
             remove_repeated_words: bool = True,
             captialize_sentences: bool = True
         ):
-        self.remove_tags = remove_tags
-        self.remove_repeated_characters = remove_repeated_characters
-        self.remove_repeated_words = remove_repeated_words
-        self.captialize_sentences = captialize_sentences
+        self.use_remove_tags = remove_tags
+        self.use_remove_repeated_characters = remove_repeated_characters
+        self.use_remove_repeated_words = remove_repeated_words
+        self.use_captialize_sentences = captialize_sentences
 
     def apply(self, text: str) -> str:
         """
@@ -23,18 +23,18 @@ class CleanCharacter(Processor):
         Returns:
             str: The cleaned text.
         """
-        if self.remove_tags:
+        if self.use_remove_tags:
             text, _ = self.remove_tags(text)
-        if self.remove_repeated_characters:
+        if self.use_remove_repeated_characters:
             text, _ = self.remove_repeated_characters(text)
-        if self.remove_repeated_words:
+        if self.use_remove_repeated_words:
             text, _ = self.remove_repeated_words(text)
-        if self.captialize_sentences:
+        if self.use_captialize_sentences:
             text, _ = self.captialize_sentences(text)
 
-        return text, True
+        return text, True, ()
 
-    def apply_pairs(self, text1: str, text2: str) -> tuple[str, str]:
+    def apply_pairs(self, text1: str, text2: str, **kwargs) -> tuple[str, str]:
         """
         Clean two input texts based on the specified cleaning options.
 
@@ -57,7 +57,7 @@ class CleanCharacter(Processor):
             text1, _ = self.captialize_sentences(text1)
             text2, _ = self.captialize_sentences(text2)
 
-        return (text1, text2), True
+        return (text1, text2), True, ()
 
     def remove_tags(self, text: str) -> str:
         """

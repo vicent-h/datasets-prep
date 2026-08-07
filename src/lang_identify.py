@@ -38,7 +38,11 @@ class LangIdentifier(Processor):
         self.model_path = model_path
         self.model = fasttext.load_model(model_path)
 
-    def apply(self, text: str, expected_lang: str = None) -> tuple:
+    def apply(
+            self, 
+            text: str, 
+            expected_lang: str = None
+        ) -> tuple:
         """
         Predict the language of the input text.
 
@@ -55,19 +59,13 @@ class LangIdentifier(Processor):
         else:
             raise ValueError("expected_lang must be provided for language identification.")
         predict = self.model.predict(text, k=self.k)
-        if self.k == 1:
-            label, prob = predict
-            lang = label[0].replace("__label__", "")
-            if prob[0] > self.threshold and lang == expected_lang:
-                return text, True
-        else:
-            for label, prob in zip(*predict):
-                lang = label.replace("__label__", "")
-                if prob > self.threshold and lang == expected_lang:
-                    return text, True
-        return text, False
+        label, prob = predict
+        lang = label[0].replace("__label__", "")
+        prob = prob[0]
+        eval = prob > self.threshold and lang == expected_lang
+        return text, eval, {'prob': prob}
 
-    def apply_pairs(self, text1: str, text2: str, expected_lang1: str = None, expected_lang2: str = None) -> tuple:
+    def apply_pairs(self, text1: str, text2: str, expected_lang1: str = None, expected_lang2: str = None, **kwargs) -> tuple:
         """
         Predict the languages of two input texts.
 
@@ -82,10 +80,13 @@ class LangIdentifier(Processor):
         """
 
         result_pairs = False
-        text1, result1 = self.apply(text1, expected_lang=expected_lang1)
-        text2, result2 = self.apply(text2, expected_lang=expected_lang2)
+        text1, result1, p1 = self.apply(text1, expected_lang=expected_lang1)
+        text2, result2, p2 = self.apply(text2, expected_lang=expected_lang2)
+
+        prob1 = p1.get('prob', 0)
+        prob2 = p2.get('prob', 0)
         result_pairs = result1 and result2
-        return (text1, text2), result_pairs
+        return (text1, text2), result_pairs, {'prob1': prob1, 'prob2': prob2}
 
     def score(self, text: str) -> float:
         """

@@ -6,7 +6,7 @@ class LengthClash(Processor):
         self.max_length_diff_ratio = max_length_diff_ratio
         self.lengths = {}
 
-    def count_length(text):
+    def count_length(self, text):
         text = re.sub(r"[^\w\s]", "", text)
         text = re.sub(r"\s+", " ", text)
         return len(text.split())
@@ -19,8 +19,7 @@ class LengthClash(Processor):
         length_diff_ratio = max(len1, len2) / min(len1, len2)
         return length_diff_ratio
 
-    def apply_pairs(self, text1: str, text2: str) -> tuple:
+    def apply_pairs(self, text1: str, text2: str, **kwargs) -> tuple:
         length_diff_ratio = self.score(text1, text2)
-        if length_diff_ratio > self.max_length_diff_ratio:
-            return (text1, text2), True
-        return (text1, text2), False
+        eval = length_diff_ratio > self.max_length_diff_ratio
+        return (text1, text2), eval, {'length_diff_ratio': length_diff_ratio}

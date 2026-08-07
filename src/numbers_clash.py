@@ -20,7 +20,7 @@ class NumbersClash(Processor):
         numbers = re.findall(r'\d+', text)
         return numbers
 
-    def apply(self, text1: str, text2: str) -> tuple:
+    def apply(self, text1: str, text2: str, **kwargs) -> tuple:
         """
         Check if the two input texts have any numbers in common.
 
@@ -35,6 +35,6 @@ class NumbersClash(Processor):
 
         # Check for common numbers
         common_numbers = set(numbers1).intersection(set(numbers2))
-        if len(common_numbers) / max(len(numbers1), len(numbers2)) > self.threshold:
-            return (text1, text2), True
-        return (text1, text2), False
+        similarity = len(common_numbers) / max(len(numbers1), len(numbers2)) if max(len(numbers1), len(numbers2)) > 0 else 0
+        eval = similarity > self.threshold
+        return (text1, text2), eval, {'similarity': similarity}

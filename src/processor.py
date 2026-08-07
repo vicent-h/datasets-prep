@@ -10,9 +10,9 @@ class Processor:
         Returns:
             str: The processed text.
         """
-        return text, True
+        return text, True, {}
 
-    def apply_pairs(self, text1: str, text2: str) -> tuple[str, str]:
+    def apply_pairs(self, text1: str, text2: str, **kwargs) -> tuple[str, str]:
         """
         Process two input texts.
 
@@ -22,4 +22,4 @@ class Processor:
         Returns:
             tuple[str, str]: A tuple containing the processed texts.
         """
-        return (text1, text2), True
+        return (text1, text2), True, {}
