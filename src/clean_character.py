@@ -32,7 +32,7 @@ class CleanCharacter(Processor):
         if self.use_captialize_sentences:
             text, _ = self.captialize_sentences(text)
 
-        return text, True, ()
+        return text, True, {}
 
     def apply_pairs(self, text1: str, text2: str, **kwargs) -> tuple[str, str]:
         """
@@ -57,7 +57,7 @@ class CleanCharacter(Processor):
             text1, _ = self.captialize_sentences(text1)
             text2, _ = self.captialize_sentences(text2)
 
-        return (text1, text2), True, ()
+        return (text1, text2), True, {}
 
     def remove_tags(self, text: str) -> str:
         """

@@ -30,6 +30,6 @@ class UnidecodeNorm(Processor):
         Returns:
             tuple[str, str]: A tuple containing the normalized texts.
         """
-        text1, _ = self.apply(text1)
-        text2, _ = self.apply(text2)
+        text1, _, _ = self.apply(text1)
+        text2, _, _ = self.apply(text2)
         return (text1, text2), True, {}
