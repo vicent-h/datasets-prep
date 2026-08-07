@@ -112,7 +112,7 @@ MAX_PENDING = NUM_WORKERS * 2
 
 # Arquivo final
 OUTPUT_FILE = 'out/analise_textos.parquet'
-OUTPUT_TSV_FILE = 'out/analise_textos.tsv'
+OUTPUT_TSV_FILE = '/media/alvarinho/dados/Datasets/refined/analise_textos.tsv'
 TSV_SEPARATOR = '<SEP>'
 
 
@@ -286,14 +286,19 @@ def process_chunk(args):
             }
         )
 
+        text1 = processed_kwargs['text1']
+        text2 = processed_kwargs['text2']
+
         result = {
             'path': path,
             'src_file': src_file,
             'tgt_file': tgt_file,
             'index': index,
             'eval': eval_result,
-            'text1': raw_text1,
-            'text2': raw_text2
+            'len_text1': len(text1),
+            'len_text2': len(text2),
+            'text1': text1,
+            'text2': text2
         }
 
         result.update(metrics)
