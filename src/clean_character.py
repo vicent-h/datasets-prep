@@ -1,18 +1,20 @@
 import re
 from src.processor import Processor
 
-class CleanCharacter(Processor):
+class CleanSentences(Processor):
     def __init__(
             self,
             remove_tags: bool = True,
             remove_repeated_characters: bool = True,
             remove_repeated_words: bool = True,
-            captialize_sentences: bool = True
+            captialize_sentences: bool = True,
+            remove_by_length: list = [0, 0]
         ):
         self.use_remove_tags = remove_tags
         self.use_remove_repeated_characters = remove_repeated_characters
         self.use_remove_repeated_words = remove_repeated_words
         self.use_captialize_sentences = captialize_sentences
+        self.remove_by_length_config = remove_by_length
 
     def apply(self, text: str) -> str:
         """
@@ -58,6 +60,11 @@ class CleanCharacter(Processor):
             text2, _ = self.captialize_sentences(text2)
 
         return (text1, text2), True, {}
+
+    def remove_by_length(self, text: str):
+        use = sum(self.remove_by_length_config) > 0
+        if not use:
+            return text, True
 
     def remove_tags(self, text: str) -> str:
         """

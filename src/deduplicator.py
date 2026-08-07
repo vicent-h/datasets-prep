@@ -18,11 +18,10 @@ class ExactDuplicator(Processor):
         If no exact duplicate is found the sentence is added to the index and
         the method returns False.
         """
-        if text in self.seen_texts:
-            return True
-        else:
+        eval = text in self.seen_texts
+        if not eval:
             self.seen_texts.add(text)
-            return text, False
+        return text, eval, {'exact_duplicate_seen': eval}
 
 
 class MinHashDetector(Processor):
@@ -75,7 +74,7 @@ class MinHashDetector(Processor):
         self.hashes[key] = mh
         self.texts[key] = norm
         self.lsh.insert(key, mh)
-        return text, False, {'similarity': 0.0}
+        return text, True, {'min_hash_similarity': 0.0}
 
     def apply_pairs(self, text1: str, text2: str, **kwargs) -> tuple[str, str]:
         """
@@ -88,4 +87,4 @@ class MinHashDetector(Processor):
 
         result_pairs = result1 and result2
 
-        return (text1, text2), result_pairs, {'similarity1': p1.get('similarity', 0), 'similarity2': p2.get('similarity', 0)}
+        return (text1, text2), result_pairs, {'min_hash_similarity1': p1.get('min_hash_similarity', 0), 'min_hash_similarity2': p2.get('min_hash_similarity', 0)}

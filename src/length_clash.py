@@ -22,4 +22,4 @@ class LengthClash(Processor):
     def apply_pairs(self, text1: str, text2: str, **kwargs) -> tuple:
         length_diff_ratio = self.score(text1, text2)
         eval = length_diff_ratio <= self.max_length_diff_ratio
-        return (text1, text2), eval, {'length_diff_ratio': length_diff_ratio}
+        return (text1, text2), eval, {'length_clash_diff_ratio': length_diff_ratio}

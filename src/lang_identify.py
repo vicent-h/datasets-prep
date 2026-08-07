@@ -63,7 +63,7 @@ class LangIdentifier(Processor):
         lang = label[0].replace("__label__", "")
         prob = prob[0]
         eval = prob > self.threshold and lang == expected_lang
-        return text, eval, {'prob': prob}
+        return text, eval, {'lang_identify_prob': prob}
 
     def apply_pairs(self, text1: str, text2: str, expected_lang1: str = None, expected_lang2: str = None, **kwargs) -> tuple:
         """
@@ -83,10 +83,10 @@ class LangIdentifier(Processor):
         text1, result1, p1 = self.apply(text1, expected_lang=expected_lang1)
         text2, result2, p2 = self.apply(text2, expected_lang=expected_lang2)
 
-        prob1 = p1.get('prob', 0)
-        prob2 = p2.get('prob', 0)
+        prob1 = p1.get('lang_identify_prob', 0)
+        prob2 = p2.get('lang_identify_prob', 0)
         result_pairs = result1 and result2
-        return (text1, text2), result_pairs, {'prob1': prob1, 'prob2': prob2}
+        return (text1, text2), result_pairs, {'lang_identify_prob1': prob1, 'lang_identify_prob2': prob2}
 
     def score(self, text: str) -> float:
         """
