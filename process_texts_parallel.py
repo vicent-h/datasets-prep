@@ -17,6 +17,8 @@ from tqdm import tqdm
 import gc
 import os
 
+import time
+
 
 # ============================================================
 # CONFIGURAÇÕES
@@ -462,6 +464,8 @@ def write_results_to_tsv(results, tsv_handle):
 
 def main():
 
+    start_time = time.perf_counter()
+
     # --------------------------------------------------------
     # Cria diretórios de saída
     # --------------------------------------------------------
@@ -798,6 +802,20 @@ def main():
         f'TSV salvo em: {OUTPUT_TSV_FILE}'
     )
 
+    end_time = time.perf_counter()
+
+    elapsed_time = end_time - start_time
+
+    hours, remainder = divmod(elapsed_time, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    print(
+        f'Tempo total: '
+        f'{int(hours):02d}:'
+        f'{int(minutes):02d}:'
+        f'{seconds:05.2f}'
+    )
+
 
 # ============================================================
 # ENTRY POINT
@@ -806,3 +824,4 @@ def main():
 if __name__ == '__main__':
 
     main()
+
