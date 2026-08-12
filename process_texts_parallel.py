@@ -1,4 +1,3 @@
-
 from src.clean_character import CleanSentences
 from src.deduplicator import ExactDuplicator, MinHashDetector
 from src.lang_identify import LangIdentifier
@@ -25,59 +24,87 @@ import os
 
 DATASETS = [
     {
+        'dataset_id': 'EMEA_en_es',
+
         'path': '/media/alvarinho/dados/Datasets/raw/emea en-es.txt/',
         'src_file': 'EMEA.en-es.en',
         'tgt_file': 'EMEA.en-es.es',
+
         'src_lang': 'en',
         'tgt_lang': 'es',
     },
+
     {
+        'dataset_id': 'EMEA_en_pt',
+
         'path': '/media/alvarinho/dados/Datasets/raw/emea en-pt.txt/',
         'src_file': 'EMEA.en-pt.en',
         'tgt_file': 'EMEA.en-pt.pt',
+
         'src_lang': 'en',
         'tgt_lang': 'pt',
     },
 
     {
+        'dataset_id': 'ParaCrawl_en_es',
+
         'path': '/media/alvarinho/dados/Datasets/raw/paracrawl en-es.txt/',
         'src_file': 'ParaCrawl.en-es.en',
         'tgt_file': 'ParaCrawl.en-es.es',
+
         'src_lang': 'en',
         'tgt_lang': 'es',
     },
+
     {
+        'dataset_id': 'ParaCrawl_en_pt',
+
         'path': '/media/alvarinho/dados/Datasets/raw/paracrawl en-pt.txt/',
         'src_file': 'ParaCrawl.en-pt.en',
         'tgt_file': 'ParaCrawl.en-pt.pt',
+
         'src_lang': 'en',
         'tgt_lang': 'pt',
     },
 
     {
+        'dataset_id': 'SciELO_en_pt',
+
         'path': '/media/alvarinho/dados/Datasets/raw/scielo en-pt.txt/',
         'src_file': 'SciELO.en-pt.en',
         'tgt_file': 'SciELO.en-pt.pt',
+
         'src_lang': 'en',
         'tgt_lang': 'pt',
     },
 
     {
+        'dataset_id': 'WikiMatrix_en_es',
+
         'path': '/media/alvarinho/dados/Datasets/raw/wikimatrix en-es.txt/',
         'src_file': 'WikiMatrix.en-es.en',
         'tgt_file': 'WikiMatrix.en-es.es',
+
         'src_lang': 'en',
         'tgt_lang': 'es',
     },
+
     {
+        'dataset_id': 'WikiMatrix_en_pt',
+
         'path': '/media/alvarinho/dados/Datasets/raw/wikimatrix en-pt.txt/',
         'src_file': 'WikiMatrix.en-pt.en',
         'tgt_file': 'WikiMatrix.en-pt.pt',
+
         'src_lang': 'en',
         'tgt_lang': 'pt',
     },
 ]
 
+
+# ============================================================
+# PROCESSAMENTO
+# ============================================================
 
 # Quantidade de linhas processadas por tarefa.
 #
@@ -110,10 +137,19 @@ NUM_WORKERS = 16
 MAX_PENDING = NUM_WORKERS * 2
 
 
-# Arquivo final
+# ============================================================
+# ARQUIVOS DE SAÍDA
+# ============================================================
+
 OUTPUT_FILE = 'out/analise_textos.parquet'
-OUTPUT_TSV_FILE = '/media/alvarinho/dados/Datasets/refined/analise_textos.tsv'
+
+OUTPUT_TSV_FILE = (
+    '/media/alvarinho/dados/Datasets/refined/'
+    'analise_textos.tsv'
+)
+
 TSV_SEPARATOR = '<SEP>'
+TSV_SEPARATOR_METADATA = '<METADATA>'
 
 
 # ============================================================
@@ -197,6 +233,7 @@ def init_worker():
 # ============================================================
 
 def create_chunks(
+    dataset_id,
     path,
     src_file,
     tgt_file,
@@ -212,6 +249,9 @@ def create_chunks(
 
     Apenas CHUNK_SIZE pares de linhas ficam na memória
     por vez no processo principal.
+
+    O start_index representa o índice original da primeira
+    linha daquele chunk no dataset bruto.
     """
 
     with open(
@@ -239,6 +279,7 @@ def create_chunks(
                 break
 
             yield (
+                dataset_id,
                 path,
                 src_file,
                 tgt_file,
@@ -260,6 +301,7 @@ def process_chunk(args):
     global PIPE
 
     (
+        dataset_id,
         path,
         src_file,
         tgt_file,
@@ -273,7 +315,17 @@ def process_chunk(args):
 
     for offset, (src_line, tgt_line) in enumerate(lines):
 
+        # ----------------------------------------------------
+        # INDEX ORIGINAL
+        # ----------------------------------------------------
+        #
+        # Esse índice NÃO é o índice do TSV.
+        #
+        # Ele corresponde à posição da linha no arquivo bruto
+        # daquele dataset.
+        #
         index = start_index + offset
+
         raw_text1 = src_line.strip()
         raw_text2 = tgt_line.strip()
 
@@ -290,13 +342,38 @@ def process_chunk(args):
         text2 = processed_kwargs['text2']
 
         result = {
+
+            # ------------------------------------------------
+            # IDENTIFICAÇÃO DO DATASET
+            # ------------------------------------------------
+            'dataset_id': dataset_id,
+
+            # ------------------------------------------------
+            # INFORMAÇÕES DO ARQUIVO
+            # ------------------------------------------------
             'path': path,
             'src_file': src_file,
             'tgt_file': tgt_file,
+
+            # ------------------------------------------------
+            # IDENTIFICADOR ORIGINAL
+            # ------------------------------------------------
             'index': index,
+
+            # ------------------------------------------------
+            # RESULTADO DA AVALIAÇÃO
+            # ------------------------------------------------
             'eval': eval_result,
+
+            # ------------------------------------------------
+            # MÉTRICAS
+            # ------------------------------------------------
             'len_text1': len(text1),
             'len_text2': len(text2),
+
+            # ------------------------------------------------
+            # TEXTOS
+            # ------------------------------------------------
             'text1': text1,
             'text2': text2
         }
@@ -309,206 +386,74 @@ def process_chunk(args):
 
 
 # ============================================================
-# SALVAR RESULTADO NO PARQUET
+# SALVAR RESULTADO NO TSV
 # ============================================================
-
-def write_results_to_parquet(
-    results,
-    parquet_writer
-):
-    """
-    Converte os resultados de um chunk para Arrow e escreve
-    diretamente no Parquet.
-
-    O DataFrame existe apenas durante esta função.
-    """
-
-    if not results:
-        return
-
-    df = pd.DataFrame(results)
-
-    table = pa.Table.from_pandas(
-        df,
-        preserve_index=False
-    )
-
-    parquet_writer.write_table(table)
-
-    # Liberamos imediatamente as referências grandes.
-    del table
-    del df
-    del results
-
 
 def write_results_to_tsv(results, tsv_handle):
     """
-    Escreve os pares de texto recebidos no kwargs em um arquivo TSV.
-    Cada linha segue o formato:
+    Escreve SOMENTE exemplos válidos no TSV.
 
-        text1<Sep>text2
+    O TSV mantém a identificação original do exemplo.
 
+    Formato:
+
+        dataset_id<SEP>index<SEP>text1<SEP>text2
+
+    Exemplo:
+
+        EMEA_en_es<SEP>15342<SEP>Hello world<SEP>Hola mundo
+
+    IMPORTANTE:
+    O index é o índice original no dataset bruto.
+    Portanto, remover exemplos inválidos não quebra
+    o rastreamento.
     """
 
     if not results:
         return
 
     for result in results:
-        if(result['eval']):
-            text1 = str(result.get('text1', '')).replace('\n', ' ').replace('\t', ' ')
-            text2 = str(result.get('text2', '')).replace('\n', ' ').replace('\t', ' ')
-            tsv_handle.write(f'{text1}{TSV_SEPARATOR}{text2}\n')
-
-
-# ============================================================
-# PROCESSA UM DATASET
-# ============================================================
-
-def process_dataset(
-    dataset,
-    parquet_writer
-):
-
-    path = dataset['path']
-    src_file = dataset['src_file']
-    tgt_file = dataset['tgt_file']
-
-    src_lang = dataset['src_lang']
-    tgt_lang = dataset['tgt_lang']
-
-    print()
-    print('=' * 80)
-    print(f'Analisando: {src_file} -> {tgt_file}')
-    print(f'Idiomas: {src_lang} -> {tgt_lang}')
-    print('=' * 80)
-
-    chunks = create_chunks(
-        path=path,
-        src_file=src_file,
-        tgt_file=tgt_file,
-        src_lang=src_lang,
-        tgt_lang=tgt_lang,
-        chunk_size=CHUNK_SIZE
-    )
-
-    # --------------------------------------------------------
-    # ProcessPool
-    #
-    # Cada worker:
-    #
-    # 1. é criado
-    # 2. executa init_worker()
-    # 3. cria seu Pipeline
-    # 4. processa vários chunks
-    # 5. é destruído ao sair do "with"
-    # --------------------------------------------------------
-
-    with ProcessPoolExecutor(
-        max_workers=NUM_WORKERS,
-        initializer=init_worker
-    ) as executor:
-
-        pending = set()
 
         # ----------------------------------------------------
-        # Enviamos inicialmente apenas MAX_PENDING chunks.
-        #
-        # NÃO enviamos todos os chunks do arquivo de uma vez.
+        # FILTRO
         # ----------------------------------------------------
 
-        for _ in range(MAX_PENDING):
+        if result['eval']:
 
-            try:
-                chunk = next(chunks)
-            except StopIteration:
-                break
-
-            future = executor.submit(
-                process_chunk,
-                chunk
+            dataset_id = str(
+                result['dataset_id']
             )
 
-            pending.add(future)
+            index = result['index']
 
-        # ----------------------------------------------------
-        # Enquanto existirem tarefas pendentes...
-        # ----------------------------------------------------
+            # ------------------------------------------------
+            # TEXTOS
+            # ------------------------------------------------
 
-        with tqdm(
-            desc=src_file,
-            unit='linhas'
-        ) as progress:
+            text1 = (
+                str(result.get('text1', ''))
+                .replace('\n', ' ')
+                .replace('\r', ' ')
+                .replace('\t', ' ')
+            )
 
-            while pending:
+            text2 = (
+                str(result.get('text2', ''))
+                .replace('\n', ' ')
+                .replace('\r', ' ')
+                .replace('\t', ' ')
+            )
 
-                done, pending = wait(
-                    pending,
-                    return_when=FIRST_COMPLETED
-                )
+            # ------------------------------------------------
+            # ESCREVE
+            # ------------------------------------------------
 
-                # ------------------------------------------------
-                # Cada future terminado libera seus dados depois
-                # que escrevemos no Parquet.
-                # ------------------------------------------------
-
-                for future in done:
-
-                    results = future.result()
-
-                    # Quantidade de linhas processadas
-                    progress.update(
-                        len(results)
-                    )
-
-                    # Escreve imediatamente no Parquet
-                    write_results_to_parquet(
-                        results,
-                        parquet_writer
-                    )
-
-                    # --------------------------------------------
-                    # Importante:
-                    #
-                    # Não guardamos "results".
-                    # Ele é liberado logo após ser escrito.
-                    # --------------------------------------------
-
-                    del results
-
-                    # --------------------------------------------
-                    # Tenta colocar um novo chunk na fila.
-                    # --------------------------------------------
-
-                    try:
-
-                        chunk = next(chunks)
-
-                        new_future = executor.submit(
-                            process_chunk,
-                            chunk
-                        )
-
-                        pending.add(
-                            new_future
-                        )
-
-                    except StopIteration:
-                        pass
-
-                    # Libera objetos temporários do Python.
-                    gc.collect()
-
-    # --------------------------------------------------------
-    # IMPORTANTE:
-    #
-    # Ao chegar aqui, o "with ProcessPoolExecutor" terminou.
-    #
-    # Portanto TODOS os workers deste dataset foram encerrados.
-    # --------------------------------------------------------
-
-    print(
-        f'Finalizado: {src_file}'
-    )
+            tsv_handle.write(
+                f'{dataset_id}{TSV_SEPARATOR}'
+                f'{index}{TSV_SEPARATOR_METADATA}'
+                f'{text1}{TSV_SEPARATOR}'
+                f'{text2}\n'
+            )
 
 
 # ============================================================
@@ -517,42 +462,51 @@ def process_dataset(
 
 def main():
 
-    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
-    os.makedirs(os.path.dirname(OUTPUT_TSV_FILE), exist_ok=True)
+    # --------------------------------------------------------
+    # Cria diretórios de saída
+    # --------------------------------------------------------
+
+    os.makedirs(
+        os.path.dirname(OUTPUT_FILE),
+        exist_ok=True
+    )
+
+    os.makedirs(
+        os.path.dirname(OUTPUT_TSV_FILE),
+        exist_ok=True
+    )
 
     parquet_writer = None
-    tsv_handle = open(OUTPUT_TSV_FILE, 'w', encoding='utf-8')
+
+    tsv_handle = open(
+        OUTPUT_TSV_FILE,
+        'w',
+        encoding='utf-8'
+    )
 
     try:
 
+        # ====================================================
+        # HEADER DO TSV
+        # ====================================================
+        #
+        # O header também utiliza o mesmo separador.
+        # ====================================================
+
+        tsv_handle.write(
+            f'dataset_id{TSV_SEPARATOR}'
+            f'index{TSV_SEPARATOR}'
+            f'text1{TSV_SEPARATOR}'
+            f'text2\n'
+        )
+
+        # ====================================================
+        # DATASETS
+        # ====================================================
+
         for dataset_index, dataset in enumerate(DATASETS):
 
-            # ------------------------------------------------
-            # Primeiro dataset:
-            #
-            # criamos o ParquetWriter.
-            #
-            # Os próximos datasets continuam escrevendo
-            # no mesmo arquivo.
-            # ------------------------------------------------
-
-            if parquet_writer is None:
-
-                # ------------------------------------------------
-                # Precisamos descobrir o schema do primeiro chunk.
-                #
-                # Para isso, processamos o primeiro dataset
-                # normalmente e o writer será criado na primeira
-                # escrita.
-                # ------------------------------------------------
-
-                pass
-
-            # ------------------------------------------------
-            # Como precisamos criar o writer com o schema do
-            # primeiro resultado, usamos uma versão especial
-            # para o primeiro chunk.
-            # ------------------------------------------------
+            dataset_id = dataset['dataset_id']
 
             path = dataset['path']
             src_file = dataset['src_file']
@@ -563,15 +517,33 @@ def main():
 
             print()
             print('=' * 80)
+
             print(
-                f'Dataset {dataset_index + 1}/{len(DATASETS)}'
+                f'Dataset '
+                f'{dataset_index + 1}/{len(DATASETS)}'
             )
+
+            print(
+                f'ID: {dataset_id}'
+            )
+
             print(
                 f'{src_file} -> {tgt_file}'
             )
+
+            print(
+                f'Idiomas: '
+                f'{src_lang} -> {tgt_lang}'
+            )
+
             print('=' * 80)
 
+            # ------------------------------------------------
+            # CHUNKS
+            # ------------------------------------------------
+
             chunks = create_chunks(
+                dataset_id=dataset_id,
                 path=path,
                 src_file=src_file,
                 tgt_file=tgt_file,
@@ -581,7 +553,7 @@ def main():
             )
 
             # ------------------------------------------------
-            # Processamos o dataset.
+            # PROCESS POOL
             # ------------------------------------------------
 
             with ProcessPoolExecutor(
@@ -591,16 +563,18 @@ def main():
 
                 pending = set()
 
-                # ------------------------------------------------
-                # Inicializa os primeiros trabalhos.
-                # ------------------------------------------------
+                # =================================================
+                # Inicializa os primeiros trabalhos
+                # =================================================
 
                 for _ in range(MAX_PENDING):
 
                     try:
+
                         chunk = next(chunks)
 
                     except StopIteration:
+
                         break
 
                     future = executor.submit(
@@ -610,9 +584,9 @@ def main():
 
                     pending.add(future)
 
-                # ------------------------------------------------
-                # Barra de progresso.
-                # ------------------------------------------------
+                # =================================================
+                # PROGRESS BAR
+                # =================================================
 
                 with tqdm(
                     desc=src_file,
@@ -626,42 +600,83 @@ def main():
                             return_when=FIRST_COMPLETED
                         )
 
+                        # =================================================
+                        # PROCESSA CHUNKS TERMINADOS
+                        # =================================================
+
                         for future in done:
 
                             results = future.result()
 
+                            # ------------------------------------------------
+                            # PROGRESSO
+                            # ------------------------------------------------
+
                             progress.update(
                                 len(results)
                             )
+
+                            # =================================================
+                            # TSV
+                            # =================================================
+                            #
+                            # SOMENTE eval=True é escrito.
+                            #
+                            # Porém dataset_id + index são preservados.
+                            # =================================================
 
                             write_results_to_tsv(
                                 results,
                                 tsv_handle
                             )
 
-                            # ------------------------------------
-                            # DataFrame temporário
-                            # ------------------------------------
+                            # =================================================
+                            # PARQUET
+                            # =================================================
+                            #
+                            # Diferentemente do TSV, o Parquet mantém
+                            # TODOS os exemplos, inclusive eval=False.
+                            #
+                            # Portanto ele continua sendo o arquivo
+                            # completo de análise.
+                            # =================================================
 
                             df = pd.DataFrame(
                                 results
                             )
 
+                            # ------------------------------------------------
+                            # Remove os textos do Parquet
+                            # ------------------------------------------------
+                            #
+                            # Os textos válidos estão no TSV.
+                            # O Parquet fica contendo metadados/métricas.
+                            # ------------------------------------------------
+
                             if 'text1' in df.columns:
-                                df = df.drop(columns=['text1'])
+
+                                df = df.drop(
+                                    columns=['text1']
+                                )
 
                             if 'text2' in df.columns:
-                                df = df.drop(columns=['text2'])
+
+                                df = df.drop(
+                                    columns=['text2']
+                                )
+
+                            # ------------------------------------------------
+                            # Converte para Arrow
+                            # ------------------------------------------------
 
                             table = pa.Table.from_pandas(
                                 df,
                                 preserve_index=False
                             )
 
-                            # ------------------------------------
-                            # Cria o ParquetWriter na primeira
-                            # vez que tivermos um schema.
-                            # ------------------------------------
+                            # =================================================
+                            # CRIA PARQUET WRITER
+                            # =================================================
 
                             if parquet_writer is None:
 
@@ -673,28 +688,30 @@ def main():
 
                             else:
 
-                                # --------------------------------
-                                # Garante que o schema permaneça
-                                # consistente entre os chunks.
-                                # --------------------------------
+                                # =================================================
+                                # Garante schema consistente
+                                # =================================================
 
-                                if table.schema != parquet_writer.schema:
+                                if (
+                                    table.schema
+                                    != parquet_writer.schema
+                                ):
 
                                     table = table.cast(
                                         parquet_writer.schema
                                     )
 
-                            # ------------------------------------
-                            # Escreve imediatamente.
-                            # ------------------------------------
+                            # =================================================
+                            # ESCREVE PARQUET
+                            # =================================================
 
                             parquet_writer.write_table(
                                 table
                             )
 
-                            # ------------------------------------
-                            # Libera memória.
-                            # ------------------------------------
+                            # =================================================
+                            # LIBERA MEMÓRIA
+                            # =================================================
 
                             del table
                             del df
@@ -702,9 +719,9 @@ def main():
 
                             gc.collect()
 
-                            # ------------------------------------
-                            # Coloca mais um chunk na fila.
-                            # ------------------------------------
+                            # =================================================
+                            # COLOCA NOVO CHUNK NA FILA
+                            # =================================================
 
                             try:
 
@@ -720,15 +737,15 @@ def main():
                                 )
 
                             except StopIteration:
+
                                 pass
 
-            # ------------------------------------------------
-            # Aqui o ProcessPoolExecutor terminou.
-            #
-            # Todos os workers deste dataset foram encerrados.
-            # ------------------------------------------------
+            # ========================================================
+            # PROCESS POOL TERMINOU
+            # ========================================================
 
             del chunks
+
             gc.collect()
 
             print()
@@ -742,15 +759,19 @@ def main():
 
     finally:
 
-        # ----------------------------------------------------
-        # Fecha o ParquetWriter.
-        # ----------------------------------------------------
+        # ========================================================
+        # FECHA PARQUET
+        # ========================================================
 
         if parquet_writer is not None:
 
             parquet_writer.close()
 
             parquet_writer = None
+
+        # ========================================================
+        # FECHA TSV
+        # ========================================================
 
         if tsv_handle is not None:
 
@@ -760,13 +781,21 @@ def main():
 
         gc.collect()
 
+    # ============================================================
+    # FINAL
+    # ============================================================
+
     print()
     print('=' * 80)
     print('PROCESSAMENTO CONCLUÍDO')
     print('=' * 80)
 
     print(
-        f'Arquivo salvo em: {OUTPUT_FILE}'
+        f'Parquet salvo em: {OUTPUT_FILE}'
+    )
+
+    print(
+        f'TSV salvo em: {OUTPUT_TSV_FILE}'
     )
 
 
@@ -777,5 +806,3 @@ def main():
 if __name__ == '__main__':
 
     main()
-
-
