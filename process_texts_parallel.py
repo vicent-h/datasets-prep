@@ -143,13 +143,9 @@ MAX_PENDING = NUM_WORKERS * 2
 # ARQUIVOS DE SAÍDA
 # ============================================================
 
-OUTPUT_FILE = 'out/analise_textos.parquet'
-
-OUTPUT_TSV_FILE = (
-    '/media/alvarinho/dados/Datasets/refined/'
-    'analise_textos.tsv'
-)
-
+OUTPUT_PATH = '/media/alvarinho/dados/Datasets/refined/traducao'
+OUTPUT_FILE = os.path.join(OUTPUT_PATH, 'analise_textos.parquet')
+OUTPUT_TSV_FILE = os.path.join(OUTPUT_PATH, 'analise_textos.tsv')
 TSV_SEPARATOR = '<SEP>'
 TSV_SEPARATOR_METADATA = '<METADATA>'
 
