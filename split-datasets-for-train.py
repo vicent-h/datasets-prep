@@ -1,16 +1,16 @@
 import pandas as pd
 import pyarrow.parquet as pq
 
-df_analise = pd.read_parquet(
-    'out/analise_textos.parquet', 
-    columns=['dataset_id', 'index'], 
-    filters=[('eval', '==', True)],
-    engine='pyarrow',
-    dtype_backend='pyarrow' # Faz o Pandas usar strings e ints otimizados do Arrow
-)
+# df_analise = pd.read_parquet(
+#     'out/analise_textos.parquet', 
+#     columns=['dataset_id', 'index'], 
+#     filters=[('eval', '==', True)],
+#     engine='pyarrow',
+#     dtype_backend='pyarrow' # Faz o Pandas usar strings e ints otimizados do Arrow
+# )
 
-# Ainda é recomendado converter para categoria se houver pouca cardinalidade
-df_analise['dataset_id'] = df_analise['dataset_id'].astype('category')
+# # Ainda é recomendado converter para categoria se houver pouca cardinalidade
+# df_analise['dataset_id'] = df_analise['dataset_id'].astype('category')
 
 import pyarrow.parquet as pq
 import pyarrow as pa
@@ -53,7 +53,7 @@ for i, batch in enumerate(parquet_file.iter_batches(batch_size=1_000_000)):
     
     # 5. Inicializa o escritor (writer) apenas na primeira iteração, usando o schema do lote
     if writer is None:
-        writer = pq.ParquetWriter('out/analise_textos_split.parquet', table_chunk.schema)
+        writer = pq.ParquetWriter('/media/alvarinho/dados/Datasets/refined/traducao/analise_textos_split.parquet', table_chunk.schema)
         
     # 6. Salva o lote no disco
     writer.write_table(table_chunk)
@@ -62,4 +62,4 @@ for i, batch in enumerate(parquet_file.iter_batches(batch_size=1_000_000)):
 if writer:
     writer.close()
 
-print('Concluído! Arquivo salvo como "out/analise_textos_split.parquet"')
+print('Concluído! Arquivo salvo como "/media/alvarinho/dados/Datasets/refined/traducao/analise_textos_split.parquet"')

@@ -103,6 +103,20 @@ DATASETS = [
     },
 ]
 
+# ============================================================
+# LIMITE DE FRASES
+# ============================================================
+
+# Quantidade máxima de pares de frases a serem processados
+# POR DATASET.
+#
+# Exemplo:
+# MAX_SENTENCE_PAIRS = 100_000
+#
+# Use None para processar o dataset inteiro.
+MAX_SENTENCE_PAIRS = 25_000_000
+
+EXPORT_STATISTICS = False  # True para exportar estatísticas de cada dataset
 
 # ============================================================
 # PROCESSAMENTO
@@ -176,7 +190,7 @@ def create_pipeline():
 
     pipe.add_step(
         LengthClash(
-            max_length_diff_ratio=2.0
+            max_length_diff_ratio=1.7
         )
     )
 
@@ -187,9 +201,9 @@ def create_pipeline():
     # possuir estado global de deduplicação.
     # --------------------------------------------------------
 
-    # pipe.add_step(
-    #     ExactDuplicator()
-    # )
+    pipe.add_step(
+        ExactDuplicator()
+    )
 
     # pipe.add_step(
     #     MinHashDetector()
@@ -237,19 +251,16 @@ def create_chunks(
     tgt_file,
     src_lang,
     tgt_lang,
-    chunk_size
+    chunk_size,
+    max_sentence_pairs=None
 ):
     """
     Lê os dois arquivos simultaneamente e produz chunks.
 
-    Importante:
-    o arquivo inteiro NÃO é carregado na RAM.
+    Apenas max_sentence_pairs serão processados quando
+    o limite estiver definido.
 
-    Apenas CHUNK_SIZE pares de linhas ficam na memória
-    por vez no processo principal.
-
-    O start_index representa o índice original da primeira
-    linha daquele chunk no dataset bruto.
+    O limite é aplicado por dataset.
     """
 
     with open(
@@ -266,10 +277,38 @@ def create_chunks(
 
         while True:
 
+            # ----------------------------------------------------
+            # Verifica se atingimos o limite
+            # ----------------------------------------------------
+
+            if (
+                max_sentence_pairs is not None
+                and start_index >= max_sentence_pairs
+            ):
+                break
+
+            # ----------------------------------------------------
+            # Define o tamanho deste chunk
+            # ----------------------------------------------------
+
+            current_chunk_size = chunk_size
+
+            if max_sentence_pairs is not None:
+                remaining = max_sentence_pairs - start_index
+
+                current_chunk_size = min(
+                    chunk_size,
+                    remaining
+                )
+
+            # ----------------------------------------------------
+            # Lê o chunk
+            # ----------------------------------------------------
+
             chunk = list(
                 islice(
                     zip(f_src, f_tgt),
-                    chunk_size
+                    current_chunk_size
                 )
             )
 
@@ -376,7 +415,11 @@ def process_chunk(args):
             'text2': text2
         }
 
-        result.update(metrics)
+        if EXPORT_STATISTICS:
+            result.update(metrics)
+        else:
+            result['lang_identify_prob'] = metrics.get('lang_identify_prob1') * metrics.get('lang_identify_prob2')
+
 
         results.append(result)
 
@@ -549,7 +592,8 @@ def main():
                 tgt_file=tgt_file,
                 src_lang=src_lang,
                 tgt_lang=tgt_lang,
-                chunk_size=CHUNK_SIZE
+                chunk_size=CHUNK_SIZE,
+                max_sentence_pairs=MAX_SENTENCE_PAIRS
             )
 
             # ------------------------------------------------
@@ -644,6 +688,8 @@ def main():
                             df = pd.DataFrame(
                                 results
                             )
+
+                            df = df[df['eval'] == True]
 
                             # ------------------------------------------------
                             # Remove os textos do Parquet
